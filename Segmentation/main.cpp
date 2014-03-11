@@ -41,7 +41,7 @@ void FillInternalContours(IplImage *pBinary, double dAreaThre);
 int main(int argc, const char * argv[])
 {
 
-    IplImage* img1 = cvLoadImage("/Users/yuyueugene84_macbook/Desktop/gotcha_test/tmp/comp2watch001.jpg");
+    IplImage* img1 = cvLoadImage("/Users/yuyueugene84_macbook/Desktop/gotcha_test/tmp/siggraph2011RPBFA006.jpg");
     
     //declare image for grayscale image
     IplImage* gray = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,1);
@@ -55,21 +55,21 @@ int main(int argc, const char * argv[])
     IplImage* img_erode = cvCloneImage(gray);
     IplImage* img_canny = cvCloneImage(gray);
     IplImage* img_final2 = cvCloneImage(gray);
-    IplImage* invert = cvCloneImage(gray);
+    //IplImage* invert = cvCloneImage(gray);
     
     IplImage* img_contour = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,3);
     IplImage* img_contour2 = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,3);
     
     
     CvMemStorage *storage = cvCreateMemStorage(0);
-    CvMemStorage *storage2 = cvCreateMemStorage(0);
+    //CvMemStorage *storage2 = cvCreateMemStorage(0);
     
     vector<CvRect> boxes;
     
     CvSeq *first_contour = NULL;
-    CvSeq *largest_contour = NULL;
+    //CvSeq *largest_contour = NULL;
     //CvSeq *second_contour = cvCreateSeq(0,sizeof(CvSeq),sizeof(CvRect),storage2);
-    CvSeq *second_contour = NULL;
+    //CvSeq *second_contour = NULL;
     
 
     
@@ -90,6 +90,7 @@ int main(int argc, const char * argv[])
     
     cvSaveImage(filename, img_erode);
     
+    //rlsa horizontal sweep
     for( int y = 0; y < img_erode->height; y++ )
     {
         counter = 0;
@@ -145,7 +146,7 @@ int main(int argc, const char * argv[])
     
     cvSaveImage(rlsa_hor, rlsa_result);
     
-    
+    //rlsa vertical sweep
     for (int x = 0; x < img_erode->width; x++) {
         
         counter = 0;
@@ -200,6 +201,7 @@ int main(int argc, const char * argv[])
     
     cvSaveImage(rlsa_ver, rlsa_result2);
     
+    //rlsa vertical and horizontal AND operation
     for (int y = 0; y<img_erode->height; y++) {
         for (int x = 0; x<img_erode->width; x++) {
             c = rlsa_result->imageData[y * img_erode->widthStep + x];
@@ -217,7 +219,7 @@ int main(int argc, const char * argv[])
     
     cvSaveImage(rlsa_AND, rlsa_final);
     
-    
+    //second rlsa horizontal sweep
     for( int y = 0; y < rlsa_final->height; y++ )
     {
         counter = 0;
@@ -319,19 +321,37 @@ int main(int argc, const char * argv[])
 //    cvSeqPop(first_contour);
 //    cvSeqPop(first_contour);
     
+    //filter all the contour with area less than 12000
     for(; first_contour; first_contour = first_contour->h_next) {
         boundbox = cvBoundingRect(first_contour);
         area = boundbox.width * boundbox.height;
         //printf("area = %f\n", area);
-        if (area > 2000) {
+        if (area > 12000) {
             printf("area = %f\n", area);
-            cvRectangle(img_contour2, cvPoint(boundbox.x, boundbox.y), cvPoint(boundbox.x + boundbox.width, boundbox.y + boundbox.height),CV_RGB(255, 0, 0), 1, 8, 0);
             boxes.push_back(boundbox);
         }
 
+    }//end for
+    
+    area_largest = 0;
+    tmp_z = 0;
+    //cvSaveImage(rlsa_contour2, img_contour2);
+    //find largest contour
+    for (int z=0; z<boxes.size(); z++) {
+        cout << boxes[z].x << endl;
+        cout << boxes[z].y << endl;
+        cout << boxes[z].width << endl;
+        cout << boxes[z].height << endl;
+        area = boxes[z].width * boxes[z].height;
+        printf("area at %d = %f\n", z, area);
+        if (area > area_largest) {
+            area_largest = area;
+            tmp_z = z;
+            printf("area largest at %d = %f\n", z, area);
+        }
     }
     
-    //cvSaveImage(rlsa_contour2, img_contour2);
+    boxes.erase(boxes.begin() + tmp_z);
     
     for (int z=0; z<boxes.size(); z++) {
         cout << boxes[z].x << endl;
@@ -345,6 +365,20 @@ int main(int argc, const char * argv[])
     }
     
     cvSaveImage(rlsa_contour2, img_contour2);
+    
+    
+    for (int z=0; z<boxes.size(); z++) {
+        cout << boxes[z].x << endl;
+        cout << boxes[z].y << endl;
+        cout << boxes[z].width << endl;
+        cout << boxes[z].height << endl;
+        area = boxes[z].width * boxes[z].height;
+        printf("area at %d = %f\n", z, area);
+        //CvRect rect = cvBoundingRect(first_contour,0);
+        cvRectangle(img1, cvPoint(boxes[z].x, boxes[z].y), cvPoint(boxes[z].x + boxes[z].width, boxes[z].y + boxes[z].height),CV_RGB(255, 0, 0), 1, 8, 0);
+    }
+    
+    cvSaveImage(rlsa_contour1, img1);
     
     //delete the largest contour, the entire page
 //    for (; first_contour; first_contour = first_contour->h_next) {
