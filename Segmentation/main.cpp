@@ -24,16 +24,19 @@ char rlsa_ver[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_v.jpg";
 char rlsa_AND[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_final.jpg";
 char rlsa_hor2[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_h2.jpg";
 char rlsa_canny[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_canny.jpg";
-char rlsa_contour[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_contour.jpg";
+char rlsa_contour1[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_contour1.jpg";
+char rlsa_contour2[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_contour2.jpg";
 int counter = 0;
-int tmp_x = 0, tmp_y = 0;
+int tmp_x = 0, tmp_y = 0, tmp_z = 0;
 int rlsa_thresh = 30;
 int rlsa_thresh_ver = 25;
 int rlsa_thresh2 = 9;
 uchar a,b,c,d;
 int edgeThresh = 50;
-int count_contour = 0;
+int count_contour = 0, count_contour2 = 0;
 double area = 0, area_largest = 0;
+
+void FillInternalContours(IplImage *pBinary, double dAreaThre);
 
 int main(int argc, const char * argv[])
 {
@@ -55,12 +58,20 @@ int main(int argc, const char * argv[])
     IplImage* invert = cvCloneImage(gray);
     
     IplImage* img_contour = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,3);
+    IplImage* img_contour2 = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,3);
     
     
     CvMemStorage *storage = cvCreateMemStorage(0);
+    CvMemStorage *storage2 = cvCreateMemStorage(0);
+    
+    vector<CvRect> boxes;
     
     CvSeq *first_contour = NULL;
     CvSeq *largest_contour = NULL;
+    //CvSeq *second_contour = cvCreateSeq(0,sizeof(CvSeq),sizeof(CvRect),storage2);
+    CvSeq *second_contour = NULL;
+    
+
     
     IplConvKernel* pKernel = NULL;
     
@@ -265,60 +276,215 @@ int main(int argc, const char * argv[])
     //canny edge detection of the segmented blocks
     cvCanny(img_final2, img_canny, edgeThresh, edgeThresh*3, 3);
     
-    cvSaveImage(rlsa_canny, img_canny);
+    //cvSaveImage(rlsa_canny, img_canny);
     
-    //invert
-//    for (int y=0; y<img_final2->height; y++) {
-//        for (int x=0; x<img_final2->width; x++) {
-//            a = img_final2->imageData[y * img_final2->widthStep + x];
-//            if (a == 0) {
-//                invert->imageData[y * invert->widthStep + x] = 255;
-//            }
-//            else{
-//                invert->imageData[y * invert->widthStep + x] = 0;
-//            }
-//            
-//        }
-//    }
     
-    //cvSaveImage(rlsa_contour, invert);
+    //cvSaveImage(rlsa_contour1, img_contour);
     
-    cvFindContours(img_final2, storage, &first_contour, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-    
-    //cvSaveImage(rlsa_contour, img_final2);
-    
-//    cvNamedWindow( "Invert", CV_WINDOW_AUTOSIZE);
-//    cvShowImage( "Invert", invert);
     
 //    //find contour of image
-//    cvFindContours(img_final2, storage, &first_contour, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-//    
-//    cvZero(img_contour);
-//    
-//    while (first_contour != NULL){
-//        double area = fabs(cvContourArea(first_contour,CV_WHOLE_SEQ));
-//        if(area > area_largest){
-//            area_largest = area;
-//            largest_contour = first_contour;
-//        }
-//        first_contour = first_contour->h_next;
+    cvFindContours(img_final2, storage, &first_contour, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+    
+    cvZero(img_contour2);
+    
+    CvRect boundbox ;
+    
+    //draw square blocks of the contour
+//    for(; first_contour; first_contour = first_contour->h_next) {
+//        boundbox = cvBoundingRect(first_contour);
+//        cvRectangle(img_contour2, cvPoint(boundbox.x, boundbox.y), cvPoint(boundbox.x + boundbox.width, boundbox.y + boundbox.height),CV_RGB(255, 0, 0), 1, 8, 0);
+//        //boxes.push_back(boundbox);
 //    }
 //    
-    for(; first_contour != 0; first_contour = first_contour->h_next)
-    {
-        count_contour++;
-        CvScalar color = CV_RGB(rand()&255, rand()&255, rand()&255);
-        cvDrawContours(img_contour, first_contour, color, color, 0, 2, CV_FILLED, cvPoint(0, 0));
-        CvRect rect = cvBoundingRect(first_contour,0);
-        cvRectangle(img_contour, cvPoint(rect.x, rect.y), cvPoint(rect.x + rect.width, rect.y + rect.height),CV_RGB(255, 0, 0), 1, 8, 0);
+//    cvSaveImage(rlsa_contour2, img_contour2);
+    
+//    area_largest = 0;
+//    for(; first_contour; first_contour = first_contour->h_next) {
+//        boundbox = cvBoundingRect(first_contour);
+//        area = boundbox.width * boundbox.height;
+//        //printf("area = %f\n", area);
+//        
+//        if (area > area_largest) {
+//            area_largest = area;
+//        }
+//        
+////        if (area > 2000) {
+////            printf("area = %f\n", area);
+////            cvRectangle(img_contour2, cvPoint(boundbox.x, boundbox.y), cvPoint(boundbox.x + boundbox.width, boundbox.y + boundbox.height),CV_RGB(255, 0, 0), 1, 8, 0);
+////        }
+//    }
+    //printf("area largest= %f\n", area_largest);
+    //area = 0;
+    
+//    cvSeqPop(first_contour);
+//    cvSeqPop(first_contour);
+    
+    for(; first_contour; first_contour = first_contour->h_next) {
+        boundbox = cvBoundingRect(first_contour);
+        area = boundbox.width * boundbox.height;
+        //printf("area = %f\n", area);
+        if (area > 2000) {
+            printf("area = %f\n", area);
+            cvRectangle(img_contour2, cvPoint(boundbox.x, boundbox.y), cvPoint(boundbox.x + boundbox.width, boundbox.y + boundbox.height),CV_RGB(255, 0, 0), 1, 8, 0);
+            boxes.push_back(boundbox);
+        }
+
     }
     
-    printf("the num of contours : %d\n", count_contour);
+    //cvSaveImage(rlsa_contour2, img_contour2);
     
-    cvSaveImage(rlsa_contour, img_contour);
+    for (int z=0; z<boxes.size(); z++) {
+        cout << boxes[z].x << endl;
+        cout << boxes[z].y << endl;
+        cout << boxes[z].width << endl;
+        cout << boxes[z].height << endl;
+        area = boxes[z].width * boxes[z].height;
+        printf("area at %d = %f\n", z, area);
+        //CvRect rect = cvBoundingRect(first_contour,0);
+        cvRectangle(img_contour2, cvPoint(boxes[z].x, boxes[z].y), cvPoint(boxes[z].x + boxes[z].width, boxes[z].y + boxes[z].height),CV_RGB(255, 0, 0), 1, 8, 0);
+    }
     
+    cvSaveImage(rlsa_contour2, img_contour2);
+    
+    //delete the largest contour, the entire page
+//    for (; first_contour; first_contour = first_contour->h_next) {
+//        
+//        boundbox = cvBoundingRect(first_contour);
+//        area = boundbox.height * boundbox.width;
+//        
+//        //find largest area
+//        if (area > area_largest) {
+//            area_largest = area;
+//            //tmp_z = count_contour2;
+//        }
+//        
+//    }//end for
+//    
+//    for(; first_contour; first_contour = first_contour->h_next) {
+//
+//        
+//        boundbox = cvBoundingRect(first_contour);
+//        area = boundbox.height * boundbox.width;
+//        printf("%d area = %f\n", count_contour2, area);
+//        //delete controu with area smaller than 200
+//        if (area > 200 && area != area_largest) {
+//            cvSeqPush(second_contour);
+//            //cvSeqRemove(first_contour, count_contour2);
+//            //count_contour2 = count_contour2 - 1;
+//        }
+//        
+//        count_contour2++;
+//
+//    }
+
+    
+
+    
+    //cvSeqRemove(first_contour, tmp_z);
+    
+//    printf("largest area = %f\n", area_largest);
+//    printf("largest area index = %d\n", tmp_z);
+    
+    //boxes.erase(boxes.begin() + tmp_z);
+    //boxes.erase(boxes.begin() + 1);
+    //boxes.erase(boxes.begin() + 2);
+    //boxes.erase(&boxes[tmp_z]);
+    
+//    printf("box size = %lu\n", boxes.size());
+//    area_largest = 0;
+//    tmp_z = -1;
+//    for (int y=0; y<boxes.size(); y++) {
+//
+//        area = (boxes[y].width)*(boxes[y].height);
+//
+//        
+//        if (area < 200) {
+//           boxes.erase(boxes.begin() + y);
+//        }
+//        
+//        if (area > area_largest) {
+//            area_largest = area;
+//            tmp_z = y;
+//        }
+//        
+//        cout << y << endl;
+//        cout << boxes[y].x << endl;
+//        cout << boxes[y].y << endl;
+//        cout << boxes[y].width << endl;
+//        cout << boxes[y].height << endl;
+//        area = (boxes[y].width)*(boxes[y].height);
+//        cout << area << endl;
+//        cout << endl;
+//        
+//    }
+//    
+//    cvSeqPush(second_contour, &boxes);
+    
+//    for (int i=0; i < boxes.size(); i++) {
+//        cvSeqPush(first_contour, &boxes);
+//         //cvSeqPush(myKeypointSeq,&(myKeypointVector[i]));
+//        // Should add the KeyPoint in the Seq
+//    }
+    //printf("box size = %lu\n", boxes.size());
+
+    
+//    for(; second_contour != 0; second_contour = second_contour->h_next)
+//    {
+//        count_contour++;
+//        CvScalar color = CV_RGB(rand()&255, rand()&255, rand()&255);
+//        cvDrawContours(img_contour2, second_contour, color, color, 0, 2, CV_FILLED, cvPoint(0, 0));
+//        CvRect rect = cvBoundingRect(second_contour,0);
+//        cvRectangle(img_contour2, cvPoint(rect.x, rect.y), cvPoint(rect.x + rect.width, rect.y + rect.height),CV_RGB(255, 0, 0), 1, 8, 0);
+//    }
+//
+    //printf("the num of contours : %d\n", count_contour);
+//    
+//    cvSaveImage(rlsa_contour2, img_contour2);
+    
+    //FillInternalContours(img_final2, 200);
+    
+    //cvSaveImage(rlsa_contour1, img_final2);
     //cvReleaseMemStorage(&storage);
     
     return 0;
 }
 
+
+void FillInternalContours(IplImage *pBinary, double dAreaThre)
+{
+    double dConArea;
+    CvSeq *pContour = NULL;
+    CvSeq *pConInner = NULL;
+    CvMemStorage *pStorage = NULL;
+    // 执行条件
+    if (pBinary)
+    {
+        // 查找所有轮廓
+        pStorage = cvCreateMemStorage(0);
+        cvFindContours(pBinary, pStorage, &pContour, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+        // 填充所有轮廓
+        cvDrawContours(pBinary, pContour, CV_RGB(255, 255, 255), CV_RGB(255, 255, 255), 2, CV_FILLED, 8, cvPoint(0, 0));
+        // 外轮廓循环
+        int wai = 0;
+        int nei = 0;
+        for (; pContour != NULL; pContour = pContour->h_next)
+        {
+            wai++;
+            // 内轮廓循环
+            for (pConInner = pContour->v_next; pConInner != NULL; pConInner = pConInner->h_next)
+            {
+                nei++;
+                // 内轮廓面积
+                dConArea = fabs(cvContourArea(pConInner, CV_WHOLE_SEQ));
+                printf("%f\n", dConArea);
+                if (dConArea <= dAreaThre)
+                {
+                    cvDrawContours(pBinary, pConInner, CV_RGB(255, 255, 255), CV_RGB(255, 255, 255), 0, CV_FILLED, 8, cvPoint(0, 0));
+                }
+            }
+        }
+        printf("wai = %d, nei = %d\n", wai, nei);
+        cvReleaseMemStorage(&pStorage);
+        pStorage = NULL;
+    }
+}
