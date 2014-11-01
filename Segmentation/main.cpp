@@ -14,10 +14,13 @@
 #include <opencv2/opencv.hpp>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#include <dirent.h>
+#include <ctype.h>
 
 using namespace std;
 using namespace cv;
 
+//file path for the output image at different steps of the RLSA process
 char filename[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_erode.jpg";
 char rlsa_hor[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_h.jpg";
 char rlsa_ver[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_v.jpg";
@@ -26,6 +29,10 @@ char rlsa_hor2[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_h2.jpg";
 char rlsa_canny[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_canny.jpg";
 char rlsa_contour1[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_contour1.jpg";
 char rlsa_contour2[100] = "/Users/yuyueugene84_macbook/Desktop/yuki_rlsa_contour2.jpg";
+
+//char path[256] = "/Users/yuyueugene84_macbook/Documents/gotcha/gotcha_train/";
+char name[256] = "yuki002";
+
 int counter = 0;
 int tmp_x = 0, tmp_y = 0, tmp_z = 0;
 int rlsa_thresh = 30;
@@ -35,13 +42,14 @@ uchar a,b,c,d;
 int edgeThresh = 50;
 int count_contour = 0, count_contour2 = 0;
 double area = 0, area_largest = 0;
+int countz = 0;
 
 void FillInternalContours(IplImage *pBinary, double dAreaThre);
 
 int main(int argc, const char * argv[])
 {
-
-    IplImage* img1 = cvLoadImage("/Users/yuyueugene84_macbook/Desktop/gotcha_test/tmp/siggraph2011RPBFA006.jpg");
+    //read the document image I want to segment
+    IplImage* img1 = cvLoadImage("/Users/yuyueugene84_macbook/Desktop/gotcha_test/tmp/yuki002.jpg");
     
     //declare image for grayscale image
     IplImage* gray = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,1);
@@ -53,9 +61,9 @@ int main(int argc, const char * argv[])
     IplImage* rlsa_result2 = cvCloneImage(gray);
     IplImage* rlsa_final = cvCloneImage(gray);
     IplImage* img_erode = cvCloneImage(gray);
-    //IplImage* img_canny = cvCloneImage(gray);
+    IplImage* img_canny = cvCloneImage(gray);
     IplImage* img_final2 = cvCloneImage(gray);
-    //IplImage* invert = cvCloneImage(gray);
+    //IplImage* copy = cvCloneImage(gray);
     
     IplImage* img_contour = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,3);
     IplImage* img_contour2 = cvCreateImage(cvGetSize(img1),IPL_DEPTH_8U,3);
@@ -67,11 +75,6 @@ int main(int argc, const char * argv[])
     vector<CvRect> boxes;
     
     CvSeq *first_contour = NULL;
-    //CvSeq *largest_contour = NULL;
-    //CvSeq *second_contour = cvCreateSeq(0,sizeof(CvSeq),sizeof(CvRect),storage2);
-    //CvSeq *second_contour = NULL;
-    
-
     
     IplConvKernel* pKernel = NULL;
     
@@ -275,7 +278,7 @@ int main(int argc, const char * argv[])
     cvSaveImage(rlsa_hor2, img_final2);
    
     //canny edge detection of the segmented blocks
-    //cvCanny(img_final2, img_canny, edgeThresh, edgeThresh*3, 3);
+    cvCanny(img_final2, img_canny, edgeThresh, edgeThresh*3, 3);
     
 
     
@@ -337,19 +340,52 @@ int main(int argc, const char * argv[])
     cvSaveImage(rlsa_contour2, img_contour2);
     
     //Draw contour on the original image
+//    for (int z=0; z<boxes.size(); z++) {
+//        cout << boxes[z].x << endl;
+//        cout << boxes[z].y << endl;
+//        cout << boxes[z].width << endl;
+//        cout << boxes[z].height << endl;
+//        area = boxes[z].width * boxes[z].height;
+//        printf("area at %d = %f\n", z, area);
+//        //CvRect rect = cvBoundingRect(first_contour,0);
+//        cvRectangle(img1, cvPoint(boxes[z].x, boxes[z].y), cvPoint(boxes[z].x + boxes[z].width, boxes[z].y + boxes[z].height),CV_RGB(255, 0, 0), 1, 8, 0);
+//    }
+//    
+//    cvSaveImage(rlsa_contour1, img1);
+    
+    countz = 0;
+    
     for (int z=0; z<boxes.size(); z++) {
-        cout << boxes[z].x << endl;
-        cout << boxes[z].y << endl;
-        cout << boxes[z].width << endl;
-        cout << boxes[z].height << endl;
-        area = boxes[z].width * boxes[z].height;
-        printf("area at %d = %f\n", z, area);
-        //CvRect rect = cvBoundingRect(first_contour,0);
-        cvRectangle(img1, cvPoint(boxes[z].x, boxes[z].y), cvPoint(boxes[z].x + boxes[z].width, boxes[z].y + boxes[z].height),CV_RGB(255, 0, 0), 1, 8, 0);
+
+        char path[256] = "/Users/yuyueugene84_macbook/Documents/gotcha/gotcha_train/";
+        
+        char numstr[256];
+        
+        //create image
+        IplImage *img2=cvCreateImage(cvSize(boxes[z].width,boxes[z].height),IPL_DEPTH_8U, 3);
+        //set image ROI for copy
+        cvSetImageROI(img1,cvRect(boxes[z].x,boxes[z].y,boxes[z].width,boxes[z].height));
+        //cvSetImageROI(img1,cvRect(0, 0, 200, 400));
+        cvCopy(img1, img2);
+
+        
+        int n;
+        n=sprintf(numstr, "%d", countz);
+        //printf ("[%s] is a string %d chars long\n",buffer,n);
+        
+        char achar = (char)countz;
+        //intstr = &achar;
+        //printf("achar = %c\n\n", achar);
+        
+        strcat(path, name);
+        strcat(path, "_");
+        strcat(path, numstr);
+        strcat(path, ".jpg");
+        printf("path is: %s\n", path);
+        cvSaveImage(path, img2);
+        
+        countz++;
     }
-    
-    cvSaveImage(rlsa_contour1, img1);
-    
     
     return 0;
 }
